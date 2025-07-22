@@ -1,19 +1,10 @@
 local PlayerData = {}
 
-local QBCore
-local HasAlreadyEnteredMarker = false
-local LastZone
-local CurrentAction
-local CurrentActionMsg = ''
-local CurrentActionData = {}
 local ownerInit = false
 local myIdentifier
-local pauseThread = 8
 
-QBCore = exports['qb-core']:GetCoreObject()
-
-RegisterNetEvent('buyable_carwash:saveOwners')
-AddEventHandler('buyable_carwash:saveOwners', function(Owners, me)
+RegisterNetEvent('qbx_skulrag_buyable_carwash:saveOwners')
+AddEventHandler('qbx_skulrag_buyable_carwash:saveOwners', function(Owners, me)
     for k, v in pairs(Owners) do
         if (Config.Zones[v.name] ~= nil) then
             Config.Zones[v.name].Owner = v.owner
@@ -24,26 +15,26 @@ AddEventHandler('buyable_carwash:saveOwners', function(Owners, me)
     ownerInit = true;
 end)
 
-RegisterNetEvent('buyable_carwash:carwashBought')
-AddEventHandler('buyable_carwash:carwashBought', function(zone, owner)
+RegisterNetEvent('qbx_skulrag_buyable_carwash:carwashBought')
+AddEventHandler('qbx_skulrag_buyable_carwash:carwashBought', function(zone, owner)
     SetBlipColour(Config.Zones[zone].Washer.Blip, 2)
     Config.Zones[zone].Owner = owner
     Config.Zones[zone].isForSale = false
 end)
 
-RegisterNetEvent('buyable_carwash:cancelSelling')
-AddEventHandler('buyable_carwash:cancelSelling', function(zone, owner)
+RegisterNetEvent('qbx_skulrag_buyable_carwash:cancelSelling')
+AddEventHandler('qbx_skulrag_buyable_carwash:cancelSelling', function(zone, owner)
     SetBlipColour(Config.Zones[zone].Washer.Blip, 2)
 end)
 
-RegisterNetEvent('buyable_carwash:carwashForSale')
-AddEventHandler('buyable_carwash:carwashForSale', function(zone, price)
+RegisterNetEvent('qbx_skulrag_buyable_carwash:carwashForSale')
+AddEventHandler('qbx_skulrag_buyable_carwash:carwashForSale', function(zone, price)
     SetBlipColour(Config.Zones[zone].Washer.Blip, 5)
     Config.Zones[zone].isForSale = true
 end)
 
-RegisterNetEvent('buyable_carwash:clean')
-AddEventHandler('buyable_carwash:clean', function()
+RegisterNetEvent('qbx_skulrag_buyable_carwash:clean')
+AddEventHandler('qbx_skulrag_buyable_carwash:clean', function()
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
     local dirtLevel = GetVehicleDirtLevel(vehicle)
     local displayPrice = math.floor(dirtLevel * Config.Price)
@@ -61,57 +52,14 @@ AddEventHandler('buyable_carwash:clean', function()
     EndTextCommandThefeedPostTicker(true, true)
 end)
 
-RegisterNetEvent('buyable_carwash:cancel')
-AddEventHandler('buyable_carwash:cancel', function()
+RegisterNetEvent('qbx_skulrag_buyable_carwash:cancel')
+AddEventHandler('qbx_skulrag_buyable_carwash:cancel', function()
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
     local dirtLevel = GetVehicleDirtLevel(vehicle)
     local displayPrice = math.floor(dirtLevel * Config.Price)
     BeginTextCommandThefeedPost("STRING")
     AddTextComponentSubstringPlayerName(Lang:t('not_enough_money', {displayPrice}))
     EndTextCommandThefeedPostTicker(true, true)
-end)
-
-RegisterNetEvent('buyable_carwash:menuIsAlreadyOpened')
-AddEventHandler('buyable_carwash:menuIsAlreadyOpened', function(zone, isAlreadyOpened)
-  Config.Zones[zone].menuIsAlreadyOpened = isAlreadyOpened
-end)
-
-local price
-
-AddEventHandler('buyable_carwash:hasEnteredMarker', function(zone, zoneType)
-  local playerPed = PlayerPedId()
-
-  if zoneType == 'washer' and IsPedInAnyVehicle(playerPed, false) then
-    local dirtLevel = GetVehicleDirtLevel(GetVehiclePedIsIn(PlayerPedId(), false))
-    local pricePreFormat = math.floor(dirtLevel * Config.Price)
-    price = pricePreFormat - 0.01
-    if price >= 1.0 then
-      CurrentAction = 'carwash'
-      CurrentActionMsg = Lang:t('press_wash', {pricePreFormat})
-    else
-      CurrentAction = 'carwash'
-      CurrentActionMsg = Lang:t('no_wash_needed')
-    end
-  elseif zoneType == 'manage' and not Config.Zones[zone].menuIsAlreadyOpened then
-    CurrentAction = 'manage'
-    CurrentActionMsg = Lang:t('press_manage')
-  elseif zoneType == 'buy' and not Config.Zones[zone].menuIsAlreadyOpened then
-    CurrentAction = 'buy'
-    CurrentActionMsg = Lang:t('press_buy')
-  elseif Config.Zones[zone].menuIsAlreadyOpened then
-    CurrentAction = 'isAlreadyOpened'
-    CurrentActionMsg = Lang:t('menu_isAlreadyOpened')    
-  end
-    TriggerServerEvent('buyable_carwash:getOwners')
-    CurrentActionData = { zone = zone }
-end)
-
-AddEventHandler('buyable_carwash:hasExitedMarker', function(zone)
-    TriggerServerEvent('buyable_carwash:closeMenu', zone)
-    CurrentAction = nil
-    if Config.ESX then
-      ESX.UI.Menu.CloseAll()
-    end
 end)
 
 function initBlips()
@@ -137,149 +85,135 @@ function initBlips()
     ownerInit = false
 end
 
-function checkDistanceFromMarker (zone)
-  return GetDistanceBetweenCoords(GetEntityCoords(GetPlayerPed(-1)), zone.Pos.x, zone.Pos.y, zone.Pos.z, true) < zone.Size.x
-end
-
 function OpenBuyMenu(zone)
-  local waiting = true
-  local isForsale1
   local elements = {}
-    QBCore.Functions.TriggerCallback('buyable_carwash:isforsale', function(isForsale, price)
-      if isForsale then
-          table.insert(elements, { label = Lang:t('buy_carwash', {price}), type = 'buy_shop' })
-          table.insert(elements, { label = Lang:t('cancel'), type = 'cancel' })
-      end
-      isForsale1 = isForsale
-      waiting = false
-    end, zone)
-    while waiting do
-        Citizen.Wait(10)
-    end
+  
+  local isForsale, price = lib.callback.await('qbx_skulrag_buyable_carwash:isforsale', false, zone)
+  if isForsale then
+    table.insert(elements, {
+      title = Lang:t('buy_carwash', {price}), 
+      onSelect = function() TriggerServerEvent('qbx_skulrag_buyable_carwash:buy_carwash', zone) end
+    })
+  end
+
+  lib.registerContext({
+    id = 'qbx_skulrag_carwash_buy_menu',
+    title = Lang:t('carwash_blip'),
+    options = elements
+  })
+  lib.showContext('qbx_skulrag_carwash_buy_menu')
 end
 
 function OpenProprioMenu(zone)
   local waiting = true
-  local isForsale1
   local elements = {}
 
-    QBCore.Functions.TriggerCallback('buyable_carwash:isforsale', function(isForsale, price)
-      isForsale1 = isForsale
-      waiting = false
-    end, zone)
+  local isForsale, price = lib.callback.await('qbx_skulrag_buyable_carwash:isforsale', false, zone)
 
-    while waiting do
-      Citizen.Wait(10)
-    end
-
-    if isForsale1 then
-      table.insert(elements, { label = Lang:t('cancel_selling'), type = 'cancel_selling' })
-    elseif not isForsale1 then
-      waiting = true
-      QBCore.Functions.TriggerCallback('buyable_carwash:getAccountMoney', function (accountMoney)
-        table.insert(elements, { label = (Lang:t('stored_money') .. '<span style="color:green;">%s</span>'):format(accountMoney) })
-        waiting = false
-      end, zone)
-
-      while waiting do
-          Citizen.Wait(10)
-      end
-
-      table.insert(elements, { label = Lang:t('withdraw_money'), type = 'withdraw_money' })
-      table.insert(elements, { label = Lang:t('put_forsale'), type = 'put_forsale' })
-    end
-
-    openMenu({
-      {
-          header = Lang:t('shop_proprio'),
-          isMenuHeader = true, -- Set to true to make a nonclickable title
-      },
-      {
-          header = "Sub Menu Button",
-          txt = "This goes to a sub menu",
-          params = {
-              event = "qb-menu:client:testMenu2",
-              args = {
-                  number = 1,
-              }
-          }
-      },
-      {
-          header = "Sub Menu Button",
-          txt = "This goes to a sub menu",
-          disabled = true,
-          -- hidden = true, -- doesnt create this at all if set to true
-          params = {
-              event = "qb-menu:client:testMenu2",
-              args = {
-                  number = 1,
-              }
-          }
-      },
+  if isForsale then
+    table.insert(elements, { 
+      title = Lang:t('cancel_selling'),
+      icon = 'fa-solid fa-xmark',
+      onSelect = function () TriggerServerEvent('qbx_skulrag_buyable_carwash:cancelselling', zone) end
     })
+  elseif not isForsale then
+    local accountMoney = lib.callback.await('qbx_skulrag_buyable_carwash:getAccountMoney', zone)
+    table.insert(elements, {
+      title = (Lang:t('stored_money') .. '<span style="color:green;">%s</span>'):format(accountMoney),
+      description = Lang:t('withdraw_money'),
+      onSelect = function () TriggerServerEvent('qbx_skulrag_buyable_carwash:withdrawMoney', zone) end
+    })
+    table.insert(elements, {
+      title = Lang:t('put_forsale'),
+      onSelect = function () TriggerServerEvent('qbx_skulrag_buyable_carwash:putforsale', zone, 1) end
+    })
+  end
+
+  lib.registerContext({
+    id = 'qbx_skulrag_carwash_manage_menu',
+    title = Lang:t('shop_proprio'),
+    options = elements
+  })
+  lib.showContext('qbx_skulrag_carwash_manage_menu')
 end
 
-RegisterNetEvent('qb-menu:client:testButton', function(data)
-  TriggerEvent('QBCore:Notify', data.message)
-end)
+function Draw3DText(x, y, z, text)
+    local onScreen, _x, _y = World3dToScreen2d(x, y, z)
+    local px, py, pz = table.unpack(GetGameplayCamCoords())
+
+    if onScreen then
+        SetTextScale(0.35, 0.35)
+        SetTextFont(4)
+        SetTextProportional(1)
+        SetTextColour(255, 255, 255, 215)
+        SetTextEntry("STRING")
+        SetTextCentre(true)
+        AddTextComponentString(text)
+        DrawText(_x, _y)
+        -- Optionnel : background rectangle
+        local factor = (string.len(text)) / 370
+        DrawRect(_x, _y + 0.0125, 0.015 + factor, 0.03, 0, 0, 0, 75)
+    end
+end
 
 -- Create Blips
 Citizen.CreateThread(function()
+    TriggerServerEvent('qbx_skulrag_buyable_carwash:getOwners')
     initBlips()
 end)
 
--- Enter / Exit marker events
-Citizen.CreateThread(function()
+CreateThread(function()
     while not ownerInit do
-        Citizen.Wait(10)
+      Citizen.Wait(10)
     end
-    while true do
-        Citizen.Wait(10)
-        local isInMarker = false
-        local currentZone, zoneType
-
-        for k, v in pairs(Config.Zones) do
-          if checkDistanceFromMarker(v.Washer) then
-            isInMarker = true
-            currentZone = k
-            LastZone = k
-            zoneType = 'washer'
-          end
-          if checkDistanceFromMarker(v.Manage) then
-            isInMarker = true
-            currentZone = k
-            LastZone = k
-            if v.Owner == myIdentifier then
-              zoneType = 'manage'
-            elseif v.isForSale then
-              zoneType = 'buy'
+    for zoneName, data in pairs(Config.Zones) do
+        lib.zones.box({
+            coords = data.Manage.Pos,
+            size = Config.Manage.Size,
+            rotation = 0.0,
+            debug = false,
+            onEnter = function()
+              if Config.Zones[zoneName].Owner == myIdentifier then
+                lib.showTextUI('[E] Gérer la station de lavage')
+              elseif Config.Zones[zoneName].isForSale then
+                lib.showTextUI('[E] Acheter la station de lavage')
+              end
+            end,
+            onExit = function()
+                lib.hideTextUI()
+            end,
+            inside = function()
+                if IsControlJustReleased(0, 38) then -- touche E
+                    -- Ouvre ton menu ou déclenche ton action
+                    if Config.Zones[zoneName].Owner == myIdentifier then
+                      OpenProprioMenu(zoneName)
+                    elseif Config.Zones[zoneName].isForSale then
+                      OpenBuyMenu(zoneName)
+                    end
+                end
             end
-          end
-        end
-        if isInMarker and not HasAlreadyEnteredMarker then
-            HasAlreadyEnteredMarker = true
-            TriggerEvent('buyable_carwash:hasEnteredMarker', currentZone, zoneType)
-        end
-        if not isInMarker and HasAlreadyEnteredMarker then
-            HasAlreadyEnteredMarker = false
-            TriggerEvent('buyable_carwash:hasExitedMarker', LastZone)
-        end
+        })
     end
 end)
 
 -- Display markers
 Citizen.CreateThread(function()
+  while not ownerInit do
+    Citizen.Wait(10)
+  end
 	while true do
 		Citizen.Wait(1)
     local coords, letSleep = GetEntityCoords(PlayerPedId()), true
 
+    print('myidentifier', myIdentifier)
     for k,v in pairs(Config.Zones) do
+      print('v.Owner', v.Owner)
 	     if Config.Washer.MarkerType ~= -1 and #(coords - v.Washer.Pos) < Config.DrawDistance then
          DrawMarker(Config.Washer.MarkerType, v.Washer.Pos.x, v.Washer.Pos.y, v.Washer.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Washer.Size.x, v.Washer.Size.y, v.Washer.Size.z, Config.Washer.MarkerColor.r, Config.Washer.MarkerColor.g, Config.Washer.MarkerColor.b, 100, false, false, 2, false, nil, nil, false)
          letSleep = false
 	     end
        if (v.isForSale or v.Owner == myIdentifier) and Config.Manage.MarkerType ~= -1 and #(coords - v.Manage.Pos) < Config.DrawDistance then
-         DrawMarker(Config.Manage.MarkerType, v.Manage.Pos.x, v.Manage.Pos.y, v.Manage.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Manage.Size.x, v.Manage.Size.y, v.Manage.Size.z, Config.Manage.MarkerColor.r, Config.Manage.MarkerColor.g, Config.Manage.MarkerColor.b, 100, false, false, 2, true, nil, nil, false)
+         DrawMarker(Config.Manage.MarkerType, v.Manage.Pos.x, v.Manage.Pos.y, v.Manage.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.Manage.Size.x, Config.Manage.Size.y, Config.Manage.Size.z, Config.Manage.MarkerColor.r, Config.Manage.MarkerColor.g, Config.Manage.MarkerColor.b, 100, false, false, 2, true, nil, nil, false)
          letSleep = false
        end
     end
@@ -288,40 +222,4 @@ Citizen.CreateThread(function()
 	     Wait(500)
     end
 	end
-end)
-
--- Key Controls
-Citizen.CreateThread(function()
-  while not ownerInit do
-      Citizen.Wait(10)
-  end
-  while true do
-    Citizen.Wait(0)
-    if CurrentAction ~= nil then
-      SetTextComponentFormat('STRING')
-      AddTextComponentString(CurrentActionMsg)
-      DisplayHelpTextFromStringLabel(0, 0, 1, -1)
-      if CurrentAction == 'carwash' then
-        if IsControlJustReleased(0, 38) then
-          CurrentAction = nil
-          TriggerServerEvent('buyable_carwash:checkMoney', price, CurrentActionData.zone)
-        end
-      elseif CurrentAction == 'manage' then
-        if Config.Zones[CurrentActionData.zone].Owner == myIdentifier then
-          if IsControlJustReleased(0, 38) then
-            TriggerServerEvent('buyable_carwash:openMenu', CurrentActionData.zone)
-            OpenProprioMenu(CurrentActionData.zone)
-          end
-        end
-      elseif CurrentAction == 'buy' then
-        if IsControlJustReleased(0, 38) then
-          CurrentAction = nil
-          TriggerServerEvent('buyable_carwash:openMenu', CurrentActionData.zone)
-          OpenBuyMenu(CurrentActionData.zone)
-        end
-      end
-    else
-      Citizen.Wait(500)
-    end
-  end
 end)
