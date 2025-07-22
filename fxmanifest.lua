@@ -7,19 +7,20 @@ author 'Skulrag <skulragpro@gmail.com>'
 description 'Skulrag\'s buyables carwash'
 version '1.0.0'
 
-shared_scripts {
+shared_script {
     'config.lua',
-    '@qb-core/shared/locale.lua',
+    '@ox_lib/init.lua',
+    '@qbx_core/modules/lib.lua',
+	'@qb-core/shared/locale.lua',
 	'locales/fr.lua' -- Change this to your prefered language
 }
 
 -- What to run
 client_scripts {
-	'client/utils.lua',
 	'client/main.lua'
 }
 
 server_scripts {
-	'@mysql-async/lib/MySQL.lua',
+	'@oxmysql/lib/MySQL.lua',
 	'server/main.lua'
 }

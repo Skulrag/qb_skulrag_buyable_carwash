@@ -20,8 +20,9 @@ Config.Blip = {
 Config.DrawDistance = 100.0
 
 Config.Manage = {
-  MarkerType = 21,
-  MarkerColor = { r = 73, g = 51, b = 150 }
+  MarkerType = 29,
+  MarkerColor = { r = 73, g = 51, b = 150 },
+  Size = vector3(1.0, 1.0, 1.0),
 }
 
 Config.Washer = {
@@ -40,7 +41,6 @@ Config.Zones = {
       Pos = vector3(-224.55, 6251.38, 30.53)
     },
     Manage = {
-      Size = { x = 1.0, y = 1.0, z = 1.0 },
       Pos = vector3(-223.37, 6243.26, 31.49)
     }
   },
@@ -50,7 +50,6 @@ Config.Zones = {
       Pos = vector3(-2554.69, 2346.86, 32.16)
     },
     Manage = {
-      Size = { x = 1.0, y = 1.0, z = 1.0 },
       Pos = vector3(-2566.09, 2307.17, 33.22)
     }
   },
@@ -60,7 +59,6 @@ Config.Zones = {
       Pos = vector3(1058.72, 2656.78, 38.65)
     },
     Manage = {
-      Size = { x = 1.0, y = 1.0, z = 1.0 },
       Pos = vector3(1048.49, 2653.26, 39.55)
     }
   },
@@ -70,7 +68,6 @@ Config.Zones = {
       Pos = vector3(1121.17, -779.93, 56.84)
     },
     Manage = {
-      Size = { x = 1.0, y = 1.0, z = 1.0 },
       Pos = vector3(1130.11, -776.61, 57.61)
     }
   },
@@ -80,7 +77,6 @@ Config.Zones = {
       Pos = vector3(-110.08, 37.39, 70.51)
     },
     Manage = {
-      Size = { x = 1.0, y = 1.0, z = 1.0 },
       Pos = vector3(-105.93, 32.96, 71.43)
     }
   },
@@ -90,7 +86,6 @@ Config.Zones = {
       Pos = vector3(-699.78, -933.07, 18.11)
     },
     Manage = {
-      Size = { x = 1.0, y = 1.0, z = 1.0 },
       Pos = vector3(-702.79, -916.99, 19.21)
     }
   },
@@ -100,7 +95,6 @@ Config.Zones = {
       Pos = vector3(23.576, -1392.00, 28.43)
     },
     Manage = {
-      Size = { x = 1.0, y = 1.0, z = 1.0 },
       Pos = vector3(9.11, -1394.51, 29.29)
     }
   }
