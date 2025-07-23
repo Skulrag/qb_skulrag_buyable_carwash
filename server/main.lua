@@ -3,7 +3,6 @@ local Carwash = {}
 --
 RegisterServerEvent('qbx_skulrag_buyable_carwash:getOwners')
 AddEventHandler('qbx_skulrag_buyable_carwash:getOwners', function()
-    print('getOwners')
     local _source = source
     local cwListResult = MySQL.query.await('SELECT * FROM `carwash_list`')
     for i = 1, #cwListResult, 1 do
@@ -13,7 +12,6 @@ AddEventHandler('qbx_skulrag_buyable_carwash:getOwners', function()
             price = cwListResult[i].price,
             isForSale = cwListResult[i].isForSale
         }
-        print('Carwash[cwListResult[i].name]', json.encode(Carwash[cwListResult[i].name]))
     end
 
     local xPlayer = exports.qbx_core:GetPlayer(_source)
@@ -104,20 +102,19 @@ end)
 
 -- Callbacks
 lib.callback.register('qbx_skulrag_buyable_carwash:getAccountMoney', function(source, zone)
-    local accountMoney =  MySQL.query.await('SELECT accountMoney from `carwash_list` WHERE name=@zone', {
+    return MySQL.scalar.await('SELECT accountMoney from `carwash_list` WHERE name=@zone', {
         ['@zone'] = zone,
-    }, function(_)end)
-    return accountMoney
+    })
 end)
 
 lib.callback.register('qbx_skulrag_buyable_carwash:isforsale', function(source, zone)
-    local price =  MySQL.query.await('SELECT price from `carwash_list` WHERE name=@zone', {
+    local row =  MySQL.single.await('SELECT price, isForSale from `carwash_list` WHERE name=@zone', {
         ['@zone'] = zone,
-    }, function(_) end)
-    return Carwash[zone].isForSale, price
+    })
+    Carwash[zone].isForSale = row.isForSale
+    Carwash[zone].price = row.price
+    return row.isForSale, row.price
 end)
-
-
 
 --
 RegisterServerEvent('qbx_skulrag_buyable_carwash:cancelselling')

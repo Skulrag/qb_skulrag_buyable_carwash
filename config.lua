@@ -19,6 +19,9 @@ Config.Blip = {
 -- Markers configuration
 Config.DrawDistance = 100.0
 
+-- Forced price when player put station for sale
+Config.ForceSellPrice = 25000
+
 Config.Manage = {
   MarkerType = 29,
   MarkerColor = { r = 73, g = 51, b = 150 },
