@@ -39,31 +39,31 @@ end)
 
 RegisterNetEvent('qbx_skulrag_buyable_carwash:clean')
 AddEventHandler('qbx_skulrag_buyable_carwash:clean', function()
-    local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
-    local dirtLevel = GetVehicleDirtLevel(vehicle)
-    local displayPrice = math.floor(dirtLevel * Config.Price)
-    local timer = Config.Timer * 1000
-    FreezeEntityPosition(vehicle, true)
-    BeginTextCommandThefeedPost("STRING")
-    AddTextComponentSubstringPlayerName(Lang:t('cleaning_vehicle'))
-    EndTextCommandThefeedPostTicker(true, true)
-    Citizen.Wait(timer)
-    WashDecalsFromVehicle(GetVehiclePedIsUsing(GetPlayerPed(-1)), 1.0)
-    SetVehicleDirtLevel(vehicle, 0.0)
-    FreezeEntityPosition(vehicle, false)
-    BeginTextCommandThefeedPost("STRING")
-    AddTextComponentSubstringPlayerName(Lang:t('cleaned_vehicle', {displayPrice}))
-    EndTextCommandThefeedPostTicker(true, true)
-end)
+    local playerPed = PlayerPedId()
+    local vehicle = GetVehiclePedIsIn(playerPed, false)
 
-RegisterNetEvent('qbx_skulrag_buyable_carwash:cancel')
-AddEventHandler('qbx_skulrag_buyable_carwash:cancel', function()
-    local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
-    local dirtLevel = GetVehicleDirtLevel(vehicle)
-    local displayPrice = math.floor(dirtLevel * Config.Price)
-    BeginTextCommandThefeedPost("STRING")
-    AddTextComponentSubstringPlayerName(Lang:t('not_enough_money', {displayPrice}))
-    EndTextCommandThefeedPostTicker(true, true)
+    if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed then
+        -- Barre de progression
+        lib.progressBar({
+            duration = Config.Timer * 1000,
+            label = 'Nettoyage du véhicule...',
+            useWhileDead = false,
+            canCancel = false,
+            disable = {
+                move = true,
+                car = true,
+                combat = true,
+            },
+        })
+        
+        -- Nettoyer le véhicule
+        WashDecalsFromVehicle(vehicle, 1.0)
+        SetVehicleDirtLevel(vehicle, 0.0)
+
+        lib.notify({ type = 'success', description = 'Véhicule lavé avec succès !' })
+    else
+        lib.notify({ type = 'error', description = 'Vous devez être conducteur d’un véhicule.' })
+    end
 end)
 
 function initBlips()
@@ -125,7 +125,7 @@ function OpenProprioMenu(zone)
     table.insert(elements, {
       title = (Lang:t('stored_money') .. '<span style="color:green;">%s</span>'):format(accountMoney),
       description = Lang:t('withdraw_money'),
-      onSelect = function () TriggerServerEvent('qbx_skulrag_buyable_carwash:withdrawMoney', zone) end
+      onSelect = function () TriggerServerEvent('qbx_skulrag_buyable_carwash:withdrawMoneyFromStation', zone) end
     })
     table.insert(elements, {
       title = Lang:t('put_forsale'),
@@ -173,7 +173,7 @@ CreateThread(function()
     for zoneName, data in pairs(Config.Zones) do
         lib.zones.box({
             coords = data.Manage.Pos,
-            size = Config.Manage.Size,
+            size = Config.Manage.MarkerSize,
             rotation = 0.0,
             debug = false,
             onEnter = function()
@@ -197,6 +197,40 @@ CreateThread(function()
                 end
             end
         })
+
+         -- WASH ZONE 
+        lib.zones.box({
+            coords = data.Washer.Pos,
+            size = Config.Washer.MarkerSize,
+            rotation = 1.0,
+            debug = false,
+            onEnter = function()
+                lib.showTextUI('[E] Laver le véhicule')
+            end,
+            onExit = function()
+                lib.hideTextUI()
+            end,
+            inside = function()
+                if IsControlJustReleased(0, 38) then
+                  local playerPed = PlayerPedId()
+                  local vehicle = GetVehiclePedIsIn(playerPed, false)
+
+                  if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed then
+                    local dirt = GetVehicleDirtLevel(vehicle)
+                    if dirt == 0 then
+                      lib.notify({ type = 'info', description = 'Votre vehicule n\'est pas sale' })
+                    else
+                      local basePrice = Config.BaseWashPrice
+                      local totalPrice = math.floor(basePrice + dirt)
+                    
+                      TriggerServerEvent('qbx_skulrag_buyable_carwash:checkMoneyForWash', totalPrice, zoneName)
+                    end
+                  else
+                    lib.notify({ type = 'error', description = 'Vous devez être conducteur d’un véhicule.' })
+                  end
+                end
+            end
+        })
     end
 end)
 
@@ -209,15 +243,13 @@ Citizen.CreateThread(function()
 		Citizen.Wait(1)
     local coords, letSleep = GetEntityCoords(PlayerPedId()), true
 
-    print('myidentifier', myIdentifier)
     for k,v in pairs(Config.Zones) do
-      print('v.Owner', v.Owner)
 	     if Config.Washer.MarkerType ~= -1 and #(coords - v.Washer.Pos) < Config.DrawDistance then
-         DrawMarker(Config.Washer.MarkerType, v.Washer.Pos.x, v.Washer.Pos.y, v.Washer.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Washer.Size.x, v.Washer.Size.y, v.Washer.Size.z, Config.Washer.MarkerColor.r, Config.Washer.MarkerColor.g, Config.Washer.MarkerColor.b, 100, false, false, 2, false, nil, nil, false)
+         DrawMarker(Config.Washer.MarkerType, v.Washer.Pos.x, v.Washer.Pos.y, v.Washer.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.Washer.MarkerSize.x, Config.Washer.MarkerSize.y, Config.Washer.MarkerSize.z, Config.Washer.MarkerColor.r, Config.Washer.MarkerColor.g, Config.Washer.MarkerColor.b, 100, false, false, 2, false, nil, nil, false)
          letSleep = false
 	     end
        if (v.isForSale or v.Owner == myIdentifier) and Config.Manage.MarkerType ~= -1 and #(coords - v.Manage.Pos) < Config.DrawDistance then
-         DrawMarker(Config.Manage.MarkerType, v.Manage.Pos.x, v.Manage.Pos.y, v.Manage.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.Manage.Size.x, Config.Manage.Size.y, Config.Manage.Size.z, Config.Manage.MarkerColor.r, Config.Manage.MarkerColor.g, Config.Manage.MarkerColor.b, 100, false, false, 2, true, nil, nil, false)
+         DrawMarker(Config.Manage.MarkerType, v.Manage.Pos.x, v.Manage.Pos.y, v.Manage.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.Manage.MarkerSize.x, Config.Manage.MarkerSize.y, Config.Manage.MarkerSize.z, Config.Manage.MarkerColor.r, Config.Manage.MarkerColor.g, Config.Manage.MarkerColor.b, 100, false, false, 2, true, nil, nil, false)
          letSleep = false
        end
     end

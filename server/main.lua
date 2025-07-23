@@ -72,29 +72,30 @@ AddEventHandler('qbx_skulrag_buyable_carwash:buy_carwash', function(zone)
 end)
 
 --
-RegisterServerEvent('qbx_skulrag_buyable_carwash:withdrawMoney')
-AddEventHandler('qbx_skulrag_buyable_carwash:withdrawMoney', function(zone, amount)
+RegisterServerEvent('qbx_skulrag_buyable_carwash:withdrawMoneyFromStation')
+AddEventHandler('qbx_skulrag_buyable_carwash:withdrawMoneyFromStation', function(zone, amount)
     local _source = source
     local xPlayer  
     local identifier
-    xPlayer = QBCore.Functions.GetPlayer(_source)
-    identifier = xPlayer.citizenid
+    local xPlayer = exports.qbx_core:GetPlayer(_source)
+    local identifier = xPlayer.PlayerData.citizenid
     
-    amount = ESX.Math.Round(tonumber(amount))
+    amount = math.floor(tonumber(amount)+0.5)
     local accountMoney = MySQL.scalar.await('SELECT accountMoney from `carwash_list` WHERE name=@zone AND owner=@owner', {
         ['@owner'] = identifier,
         ['@zone'] = zone,
     })
     if amount > 0 and accountMoney >= amount then
       local newAmount = accountMoney - amount
-      MySQL.Sync.execute('UPDATE `carwash_list` SET `accountMoney`=@newAmount WHERE name = @zone', {
+      local success = MySQL.update.await('UPDATE `carwash_list` SET `accountMoney`=@newAmount WHERE name = @zone', {
           ['@newAmount'] = newAmount,
           ['@zone'] = zone,
-      }, function(_)end)
-      xPlayer.Functions.AddMoney('bank', tonumber(amount))
-      amount = ESX.Math.GroupDigits(amount)
-      print(('[Carwash withdrawMoney] BY : Owner Identifier: %s / Quantity : %d'):format(identifier, amount))
-      TriggerClientEvent('QBCore:Notify', _source, Lang:t('have_withdrawn', {amount}))
+      })
+      if success then
+        exports.qbx_core:AddMoney(identifier, 'bank', tonumber(price))
+        print(('[Carwash withdrawMoney] BY : Owner Identifier: %s / Quantity : %s'):format(identifier, amount))
+        exports.qbx_core:Notify(_source, Lang:t('have_withdrawn'), 'success')
+      end
     else
       TriggerClientEvent('QBCore:Notify', _source, Lang:t('invalid_amount'))
     end
@@ -142,36 +143,31 @@ AddEventHandler('qbx_skulrag_buyable_carwash:putforsale', function(zone, price)
 end)
 
 function addMoneyToCarWash(zone, price)
-  local accountMoney = MySQL.Sync.fetchScalar('SELECT accountMoney from `carwash_list` WHERE name=@zone', {
+  local accountMoney = MySQL.scalar.await('SELECT accountMoney from `carwash_list` WHERE name=@zone', {
       ['@zone'] = zone
-  }, function(_)end)
-  MySQL.Sync.execute('UPDATE `carwash_list` SET `accountMoney`=@newAmount WHERE name = @zone', {
+  })
+  MySQL.update('UPDATE `carwash_list` SET `accountMoney`=@newAmount WHERE name = @zone', {
       ['@newAmount'] = accountMoney + price,
       ['@zone'] = zone,
-  }, function(_)end)
+  })
 end
 
-RegisterServerEvent('qbx_skulrag_buyable_carwash:checkMoney')
-AddEventHandler('qbx_skulrag_buyable_carwash:checkMoney', function(price, zone)
+RegisterServerEvent('qbx_skulrag_buyable_carwash:checkMoneyForWash')
+AddEventHandler('qbx_skulrag_buyable_carwash:checkMoneyForWash', function(price, zone)
     local _source = source
-    local xPlayer = QBCore.Functions.GetPlayer(_source)
+    local xPlayer = exports.qbx_core:GetPlayer(_source)
+    local identifier = xPlayer.PlayerData.citizenid
+
     price = tonumber(price)
-    if price < xPlayer.Functions.GetMoney('bank') then
-      TriggerClientEvent('qbx_skulrag_buyable_carwash:clean', _source)
-      xPlayer.Functions.RemoveMoney('bank', tonumber(price))
-      addMoneyToCarWash(zone, price)
-    elseif price < xPlayer.Functions.GetMoney('cash') then
+    if price < exports.qbx_core:GetMoney(identifier, 'cash') then
         TriggerClientEvent('qbx_skulrag_buyable_carwash:clean', _source)
-        xPlayer.Functions.RemoveMoney('cash', tonumber(price))
+        exports.qbx_core:RemoveMoney(identifier, 'cash', price)
         addMoneyToCarWash(zone, price)
-    elseif price < xPlayer.Functions.GetMoney('bank') + xPlayer.Functions.GetMoney('cash') then
+    elseif price < exports.qbx_core:GetMoney(identifier, 'bank') then
         TriggerClientEvent('qbx_skulrag_buyable_carwash:clean', _source)
-        local bankPrice = xPlayer.Functions.GetMoney('bank')
-        xPlayer.Functions.RemoveMoney('bank', tonumber(bankPrice))
-        local cashPrice = price - bankPrice
-        xPlayer.Functions.RemoveMoney('cash', tonumber(cashPrice))
+        exports.qbx_core:RemoveMoney(identifier, 'bank', price)
         addMoneyToCarWash(zone, price)
     else
-        TriggerClientEvent('qbx_skulrag_buyable_carwash:cancel', _source)
+        exports.qbx_core:Notify(_source, Lang:t('not_enough_money'), 'error')
     end
 end)
