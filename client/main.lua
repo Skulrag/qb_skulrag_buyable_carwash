@@ -3,6 +3,10 @@ local PlayerData = {}
 local ownerInit = false
 local myIdentifier
 
+AddEventHandler('QBCore:Client:OnPlayerLoaded', function() 
+  TriggerServerEvent('qbx_skulrag_buyable_carwash:getOwners')
+end)
+
 RegisterNetEvent('qbx_skulrag_buyable_carwash:saveOwners')
 AddEventHandler('qbx_skulrag_buyable_carwash:saveOwners', function(Owners, me)
     for k, v in pairs(Owners) do
@@ -91,7 +95,7 @@ function OpenBuyMenu(zone)
   local isForsale, price = lib.callback.await('qbx_skulrag_buyable_carwash:isforsale', false, zone)
   if isForsale then
     table.insert(elements, {
-      title = Lang:t('buy_carwash', {price}), 
+      title = Lang:t('buy_carwash', {price}),
       onSelect = function() TriggerServerEvent('qbx_skulrag_buyable_carwash:buy_carwash', zone) end
     })
   end
@@ -125,7 +129,7 @@ function OpenProprioMenu(zone)
     })
     table.insert(elements, {
       title = Lang:t('put_forsale'),
-      onSelect = function () TriggerServerEvent('qbx_skulrag_buyable_carwash:putforsale', zone, 1) end
+      onSelect = function () TriggerServerEvent('qbx_skulrag_buyable_carwash:putforsale', zone, Config.ForceSellPrice) end
     })
   end
 
